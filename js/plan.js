@@ -1,13 +1,23 @@
 // ---------------------------------------------------------------------------
-// Building plan — Ground + First Floor (ALT-II, interpreted from hand sketch)
+// Building plan — Ground (garage) + First Floor (ALT-II, from hand sketch)
 // Units: feet. Origin: South-West corner. +X = East, +Z = North.
+//
+// Plot is 20'5" (E-W, short) x 47'5" (N-S, long). It sits BETWEEN neighbour
+// plots, so the LONG east/west walls are blind party walls and the road
+// touches the NORTH short side only. South is the rear.
+// The room layout below is the ALT-II sketch rotated to this orientation
+// (mapped from the original sketch coordinates, N-flipped so the entrance
+// faces the north road).
 // ---------------------------------------------------------------------------
 
-const W = 47 + 5 / 12; // 47'5" E-W
-const D = 20 + 5 / 12; // 20'5" N-S
+const OW = 47 + 5 / 12; // sketch long axis
+const OD = 20 + 5 / 12; // sketch short axis
+const W = 20 + 5 / 12; // plot E-W (short, road side)
+const D = 47 + 5 / 12; // plot N-S (long, neighbours E+W)
 
-// First-floor partitions/rooms as interpreted before (kept verbatim).
-const FIRST_PARTITIONS = [
+// --- original sketch interpretation (long axis = X). Do not edit directly;
+// --- everything is mapped below into plot orientation.
+const OLD_PARTITIONS = [
   { x1: 7.75, z1: 0.75, x2: 7.75, z2: 10.25, gaps: [{ at: 4.75, width: 3 }] },
   { x1: 0.75, z1: 10.25, x2: 7.75, z2: 10.25, gaps: [] },
   { x1: 7.5, z1: 11.0, x2: 7.5, z2: 19.58, gaps: [{ at: 2, width: 2.5 }] },
@@ -31,14 +41,7 @@ const FIRST_PARTITIONS = [
   { x1: 20.5, z1: 16.17, x2: 32.5, z2: 16.17, gaps: [] },
 ];
 
-const FIRST_PERIMETER = [
-  { x1: 0, z1: 0, x2: W, z2: 0, gaps: [] },
-  { x1: 0, z1: D, x2: W, z2: D, gaps: [] },
-  { x1: 0, z1: 0, x2: 0, z2: D, gaps: [{ at: 12.25, width: 3 }] },
-  { x1: W, z1: 0, x2: W, z2: D, gaps: [] },
-];
-
-const FIRST_ROOMS = [
+const OLD_ROOMS = [
   { name: 'Kitchen', sub: `7' x 9'6"`, x: 0.75, z: 0.75, w: 7, d: 9.5, color: '#dcfce7', floor: 'kitchen' },
   { name: 'Entry Lobby', sub: 'Main entrance', x: 0.75, z: 10.25, w: 6.5, d: 9.42, color: '#ffedd5', floor: 'marble' },
   { name: 'Toilet', sub: `4' x 8'7"`, x: 7.5, z: 11.0, w: 4, d: 8.58, color: '#f3e8ff', floor: 'bath' },
@@ -50,44 +53,90 @@ const FIRST_ROOMS = [
   { name: 'Bedroom (N)', sub: `10' x 13'6"`, x: 33.67, z: 10.21, w: 13, d: 9.46, color: '#dbeafe', floor: 'wood' },
 ];
 
-// Ground floor: open parking + entry. Lift/stair core aligns with first floor.
-const GROUND_PERIMETER = [
-  { x1: 0, z1: 0, x2: W, z2: 0, gaps: [] }, // south
-  { x1: 0, z1: D, x2: W, z2: D, gaps: [{ at: 18, width: 12 }] }, // north car gate
-  { x1: 0, z1: 0, x2: 0, z2: D, gaps: [{ at: 12.25, width: 3.5 }] }, // west pedestrian
-  { x1: W, z1: 0, x2: W, z2: D, gaps: [] }, // east
+// Map (x,z) -> (z, D-x): 90 deg rotation + N-S flip so entrance faces north road.
+// Gaps are measured from the wall's minimum-coordinate end (see buildWall).
+function TWall(w) {
+  const A = { x: w.z1, z: D - w.x1 };
+  const B = { x: w.z2, z: D - w.x2 };
+  const len = Math.hypot(B.x - A.x, B.z - A.z);
+  const newHoriz = Math.abs(A.z - B.z) < 1e-9;
+  const aIsMin = newHoriz ? A.x <= B.x : A.z <= B.z;
+  const gaps = (w.gaps || []).map((g) =>
+    aIsMin ? { at: g.at, width: g.width } : { at: len - g.at - g.width, width: g.width },
+  );
+  return { x1: A.x, z1: A.z, x2: B.x, z2: B.z, gaps };
+}
+
+function TRoom(r) {
+  return { ...r, x: r.z, z: D - r.x - r.w, w: r.d, d: r.w };
+}
+
+const FIRST_PARTITIONS = OLD_PARTITIONS.map(TWall);
+const FIRST_ROOMS = OLD_ROOMS.map(TRoom);
+
+// Staircase: old run along +X becomes run along Z, ascending southward (-Z).
+const OLD_STAIRS = { x: 20.5, z: 16.17, run: 12, width: 3.5, steps: 17, rise: 10 / 17 };
+const STAIRS = {
+  x: OLD_STAIRS.z,
+  z: D - OLD_STAIRS.x - OLD_STAIRS.run,
+  run: OLD_STAIRS.run,
+  width: OLD_STAIRS.width,
+  steps: 17,
+  rise: 10 / 17,
+  dir: '-z',
+};
+
+// First-floor perimeter: blind party walls E/W, rear S solid, road-facing N
+// carries the main entrance (mapped from sketch position).
+const FIRST_PERIMETER = [
+  { x1: 0, z1: 0, x2: W, z2: 0, gaps: [] }, // south (rear)
+  { x1: 0, z1: D, x2: W, z2: D, gaps: [{ at: 12.25, width: 3 }] }, // north (road)
+  { x1: 0, z1: 0, x2: 0, z2: D, gaps: [] }, // west (neighbour)
+  { x1: W, z1: 0, x2: W, z2: D, gaps: [] }, // east (neighbour)
 ];
 
-const GROUND_PARTITIONS = [
-  // Lift shaft (same footprint so lift runs continuously)
+// Windows only on road (N) + rear (S) faces. Party walls E/W are blind.
+const FIRST_WINDOWS = [
+  { wall: 'north', at: 2, width: 3 },
+  { wall: 'north', at: 16.5, width: 3 },
+  { wall: 'south', at: 2.5, width: 4 },
+  { wall: 'south', at: 13, width: 4 },
+];
+
+// Ground floor: completely open garage. Only the lift shaft + staircase run
+// down; everything else is clear for cars.
+const LIFT_OLD = [
   { x1: 7.5, z1: 6.75, x2: 7.5, z2: 11.0, gaps: [] },
   { x1: 11.5, z1: 6.75, x2: 11.5, z2: 11.0, gaps: [{ at: 1, width: 2.5 }] },
   { x1: 7.5, z1: 6.75, x2: 11.5, z2: 6.75, gaps: [] },
   { x1: 7.5, z1: 11.0, x2: 11.5, z2: 11.0, gaps: [] },
-  // Entry lobby north wall (security / lobby enclosure)
-  { x1: 0.75, z1: 10.25, x2: 7.5, z2: 10.25, gaps: [{ at: 2, width: 3 }] },
-  // Stair enclosure side walls
-  { x1: 20.5, z1: 12.5, x2: 20.5, z2: 19.67, gaps: [] },
-  { x1: 32.5, z1: 12.5, x2: 32.5, z2: 19.67, gaps: [{ at: 1, width: 3 }] },
+];
+const GATE_W = 10;
+const GATE_AT = (W - GATE_W) / 2;
+const GROUND_PERIMETER = [
+  { x1: 0, z1: 0, x2: W, z2: 0, gaps: [] }, // south (rear)
+  { x1: 0, z1: D, x2: W, z2: D, gaps: [{ at: GATE_AT, width: GATE_W, oh: 8.5 }] }, // north gate
+  { x1: 0, z1: 0, x2: 0, z2: D, gaps: [] }, // west (neighbour)
+  { x1: W, z1: 0, x2: W, z2: D, gaps: [] }, // east (neighbour)
 ];
 
+const GROUND_PARTITIONS = LIFT_OLD.map(TWall);
+
 const GROUND_ROOMS = [
-  { name: 'Parking', sub: '4 cars + drive', x: 11.5, z: 0.75, w: 35.17, d: 14.5, color: '#e2e8f0', floor: 'parking' },
-  { name: 'Entry Lobby', sub: 'Ground entry', x: 0.75, z: 10.25, w: 6.75, d: 9.42, color: '#ffedd5', floor: 'marble' },
-  { name: 'Lift', sub: `4' x 4'`, x: 7.5, z: 6.75, w: 4, d: 4, color: '#f1f5f9', floor: 'concrete' },
-  { name: 'Driveway', sub: 'Gate to parking', x: 18, z: 15.25, w: 12, d: 4.42, color: '#cbd5e1', floor: 'asphalt' },
+  { name: 'Garage', sub: 'Open parking', x: 0.75, z: 0.75, w: W - 1.5, d: D - 1.5, color: '#e2e8f0', floor: 'parking' },
+  { name: 'Lift', sub: `4' x 4'`, x: 6.75, z: D - 11.5, w: 4, d: 4, color: '#f1f5f9', floor: 'concrete' },
 ];
 
 const COLUMNS = [];
-for (const cx of [0.375, 12, 24.42, 33.67, W - 0.375]) {
-  for (const cz of [0.375, D - 0.375]) {
+for (const cx of [0.375, W / 2, W - 0.375]) {
+  for (const cz of [0.375, 16, 32, D - 0.375]) {
     COLUMNS.push({ x: cx, z: cz });
   }
 }
-COLUMNS.push({ x: 12, z: 10.25 }, { x: 24.42, z: 10.25 }, { x: 33.67, z: 10.21 });
 
 export const PLAN = {
   plot: { w: W, d: D },
+  roadSide: 'north',
   wallHeight: 10,
   groundHeight: 10,
   firstHeight: 10,
@@ -96,41 +145,31 @@ export const PLAN = {
   slabT: 0.6,
   parapetH: 3,
 
-  // kept for backwards compat = first floor
   partitions: FIRST_PARTITIONS,
   perimeter: FIRST_PERIMETER,
   rooms: FIRST_ROOMS,
-  stairs: { x: 20.5, z: 16.17, run: 12, width: 3.5, steps: 16, rise: 10 / 16 },
+  stairs: STAIRS,
 
   ground: {
     y0: 0,
     partitions: GROUND_PARTITIONS,
     perimeter: GROUND_PERIMETER,
     rooms: GROUND_ROOMS,
-    // ground->first stair: same run, starts at ground
-    stairs: { x: 20.5, z: 16.17, run: 12, width: 3.5, steps: 17, rise: 10 / 17 },
+    stairs: { ...STAIRS },
+    gate: { at: GATE_AT, width: GATE_W },
   },
   first: {
-    // top of ground slab
     y0: 10.6,
     partitions: FIRST_PARTITIONS,
     perimeter: FIRST_PERIMETER,
     rooms: FIRST_ROOMS,
-    stairs: { x: 20.5, z: 16.17, run: 12, width: 3.5, steps: 16, rise: 10 / 16 },
-    // decorative windows on outer face (position along wall, sill 3', height 4')
-    windows: [
-      { wall: 'south', at: 3, width: 4 }, { wall: 'south', at: 26, width: 5 },
-      { wall: 'south', at: 38, width: 5 },
-      { wall: 'north', at: 8, width: 4 }, { wall: 'north', at: 36, width: 5 },
-      { wall: 'east', at: 3, width: 4 }, { wall: 'east', at: 13, width: 4 },
-      { wall: 'west', at: 2, width: 3 },
-    ],
+    stairs: { ...STAIRS },
+    windows: FIRST_WINDOWS,
   },
   columns: COLUMNS,
-  // simple car spots inside parking room (x,z = SW corner, angle 0 = facing north)
+  // painted bay outlines only (garage stays empty)
   parkingSpots: [
-    { x: 14, z: 2, w: 8, d: 16, label: 'P1' },
-    { x: 22.5, z: 2, w: 8, d: 16, label: 'P2' },
-    { x: 31, z: 2, w: 8, d: 16, label: 'P3' },
+    { x: 1.5, z: 3, w: 8, d: 16, label: 'P1' },
+    { x: 1.5, z: 20, w: 8, d: 16, label: 'P2' },
   ],
 };

@@ -1,42 +1,39 @@
-# 3D House Model
+# 3D House Model — Ground + First Floor (ALT-II)
 
-An interactive 3D model of a first-floor house plan (ALT-II), built with
-[Three.js](https://threejs.org/). The plan was interpreted from a hand-drawn
-sketch — every dimension lives in one data file so it stays easy to correct.
+Live: https://theblabberingmonk.github.io/3d-house-model/
 
-## Run it locally
+Interactive 3D house built with [Three.js](https://threejs.org/) from the hand sketches in `manual-plan/`. Every dimension lives in `js/plan.js`.
 
-Any static server works (needed so the ES modules load):
+## Run locally
 
 ```bash
 python3 -m http.server 8000
 # open http://localhost:8000
 ```
 
-Internet access is required on first load — Three.js is pulled from a CDN
-(unpkg, pinned to v0.160.0). No build step, no dependencies to install.
+CDN internet required on first load (Three.js 0.160.0 via unpkg). No build step.
 
-## How it works
+## Features (prod)
 
-- `index.html` — page shell, overlay UI (title, view buttons, legend, notes).
-- `js/plan.js` — **the plan itself**: plot size, wall segments with door gaps,
-  room rectangles, staircase. Edit numbers here; the model rebuilds from it.
-- `js/app.js` — Three.js scene: extruded walls, colour-coded room floors,
-  labels, staircase, lighting, orbit controls.
+- Ground floor: open parking (3 cars), driveway + 12ft gate, entry lobby, lift + stair core, columns, storage
+- First floor ALT-II: Kitchen, Entry Lobby, Toilet 4'×8'7", Lift 4'×4', Hall 10'6"×12'5" + 7'×8' nook, W.C. 4'×4', 2× Bedrooms 10'×13'
+- True openings: doors cut 0-7ft with leaves + frames, windows cut 3-7ft with glass + mullions + sills
+- Furnished: beds + wardrobes, sofas + rug + TV, dining set, kitchen counters + sink + stove + fridge, WCs + basins, curtains, spinning ceiling fans
+- Building: roof slab + parapet + stair headroom + lift overrun + 2 water tanks, compound wall, road + footpath, trees, streetlights
+- PBR procedural textures (marble/wood/tiles/concrete/asphalt), ACES tone mapping, RoomEnvironment IBL, soft shadows
+- UI: Ground / First / Both, Perspective / Top, Labels, Furniture, Spin, Day/Dusk, Sketches overlay with opacity (compares `manual-plan/sketch-first-*.jpg`)
 
-Controls: drag to orbit, scroll to zoom, right-drag to pan. Buttons switch
-between perspective/top view and toggle room labels.
+## Files
 
-## The plan (ALT-II, interpreted)
+- `index.html` — shell + toolbar + legend + sketch modal
+- `js/plan.js` — plot 47'5" × 20'5", walls, rooms, stairs, columns, spots (edit here)
+- `js/app.js` — scene builder
+- `manual-plan/` — hand sketches + web copies `sketch-first-1/2.jpg`
 
-Plot 47'5" (E-W) × 20'5" (N-S). Rooms: Kitchen, Entry Lobby, Toilet 4'×8'7",
-Lift 4'×4', Hall 10'6"×12'5" (+ 7'×8' nook), W.C. 4'×4', two Bedrooms 10'×13'.
-Walls 10 ft high (9" exterior / 4.5" interior).
+## Deploy (GitHub Pages)
 
-Known approximations — see the header of `js/plan.js` for the full list:
-room positions are interpreted from a hand sketch, and the two 10'-deep
-bedrooms are modelled at 9.46' so they fit the 20'5" plot depth.
+Push to `main`, then Settings → Pages → Deploy from branch → `main` / `/ (root)`.
 
 ## Tech
 
-Three.js (ES modules via CDN import map), no framework, no build tools.
+Three.js ES modules via import map, no framework, no build tools.

@@ -6,6 +6,12 @@ import { PLAN } from './plan.js';
 /* ================= renderer / scene ================= */
 const container = document.getElementById('scene');
 const loaderEl = document.getElementById('loader');
+window.addEventListener('error', (e) => {
+  if (loaderEl) loaderEl.textContent = 'Error: ' + (e.message || 'failed to load 3D');
+});
+window.addEventListener('unhandledrejection', (e) => {
+  if (loaderEl) loaderEl.textContent = 'Error: ' + ((e.reason && e.reason.message) || 'failed to load 3D');
+});
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -646,7 +652,9 @@ function textSprite(text, scale = 4) {
   sp.scale.set(scale, scale / 2, 1);
   return sp;
 }
-scene.add(Object.assign(textSprite('N ↑', 5), { position: new THREE.Vector3(PLAN.plot.w + 5, 3, PLAN.plot.d + 3) }));
+const northArrow = textSprite('N ↑', 5);
+northArrow.position.set(PLAN.plot.w + 5, 3, PLAN.plot.d + 3);
+scene.add(northArrow);
 const dimS = textSprite(`47'5"`, 7); dimS.position.set(CX, 1.2, -4.2); scene.add(dimS);
 const dimW = textSprite(`20'5"`, 7); dimW.position.set(-5.4, 1.2, CZ); scene.add(dimW);
 
